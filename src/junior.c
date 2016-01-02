@@ -46,7 +46,7 @@ long eval(mpc_ast_t* t) {
     }
     
     /* The operator is always going to be the second child 
-       Notice how we check children at index */
+       Notice how we check children at index 1 */
     char* op = t->children[1]->contents; 
     
     // Store the third child in x
