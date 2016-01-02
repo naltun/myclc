@@ -149,8 +149,13 @@ lval eval(mpc_ast_t* t) {
             : lval_err(LERR_BAD_NUM);
     }
     
+<<<<<<< HEAD
     // The operator is always going to be the second child 
     // Notice how we check children at index 1 
+=======
+    /* The operator is always going to be the second child 
+       Notice how we check children at index 1 */
+>>>>>>> d0d9d947823c987c2539c5a061e972f3bee36c35
     char* op = t->children[1]->contents; 
     
     // Store the third child in x
