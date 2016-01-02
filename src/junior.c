@@ -25,32 +25,136 @@ void add_history(char*, unused) {}
 #include <editline/history.h>
 #endif
 
-// Determine which operator to use by comparing operator string to arithmetic sign
-long eval_op(long x, char* op, long y) {
+// Create enum of error types
+enum { LERR_DIV_ZERO, LERR_BAD_OP, LERR_BAD_NUM, LERR_MOD_ZERO };
+
+// Create enum of lval types
+enum { LVAL_NUM, LVAL_ERR };
+
+// Define lval (Lisp Value) struct
+typedef struct {
+    int type;
+    long num;
+    int err;
+} lval;
+
+// Create number lval type
+lval lval_num(long x) {
+    lval v;
+    v.type = LVAL_NUM;
+    v.num = x;
+    return v;
+}
+
+// Create error lval type
+lval lval_err(int x) {
+    lval v;
+    v.type = LVAL_ERR;
+    v.err = x;
+    return v;
+}
+
+// Print lval
+void lval_print(lval v) {
     
-    if (strcmp(op, "+") == 0) { return x + y; }
-    if (strcmp(op, "-") == 0) { return x - y; }
-    if (strcmp(op, "*") == 0) { return x * y; }
-    if (strcmp(op, "/") == 0) { return x / y; }
-    if (strcmp(op, "%") == 0) { return x % y; }
-    
-    return 0;
+    switch (v.type) {
+        // If lval type is number print num then break from switch
+        case LVAL_NUM:
+            printf("%li", v.num);
+            break;
+            
+        // If lval type is err
+        case LVAL_ERR:
+            // Check error type and print
+            if (v.err == LERR_DIV_ZERO) {
+                printf("Error: Can't divide by zero");
+            }
+            
+            if (v.err == LERR_BAD_OP) {
+                printf("Error: Invalid operator");
+            }
+            
+            if (v.err == LERR_BAD_NUM) {
+                printf("Error: Invalid number");
+            }
+            
+            if (v.err == LERR_MOD_ZERO) {
+                printf("Error: Can't use modulus with zero");
+            }
+            
+        break;
+    }
     
 }
 
-long eval(mpc_ast_t* t) {
+// Print lval
+void lval_println(lval v) {
+    lval_print(v);
+    putchar('\n');
+}
+
+// Determine which if lval is error or number
+// If the lval is an error, determine error and print
+// Otherwise solve expression
+lval eval_op(lval x, char* op, lval y) {
     
-    // If the string's tag is a number, return directly 
-    if (strstr(t->tag, "number")) {
-        return atoi(t->contents);
+    // If value is error, return error
+    if (x.type == LVAL_ERR) {
+        return x;
     }
     
-    /* The operator is always going to be the second child 
-       Notice how we check children at index */
+    if (y.type == LVAL_ERR) {
+        return y;
+    }
+    
+    // If value is a number peform math
+    if (strcmp(op, "+") == 0) {
+        return lval_num(x.num + y.num);
+    }
+    
+    if (strcmp(op, "-") == 0) {
+        return lval_num(x.num - y.num);
+    }
+    
+    if (strcmp(op, "*") == 0) {
+        return lval_num(x.num * y.num);
+    }
+    
+    if (strcmp(op, "/") == 0) {
+        // If y.num is zero return error
+        return y.num == 0
+            ? lval_err(LERR_DIV_ZERO)
+            : lval_num(x.num / y.num);
+    }
+    
+    if (strcmp(op, "%") == 0) {
+        // If y.num is zero return error
+        return y.num == 0
+            ? lval_err(LERR_MOD_ZERO)
+            : lval_num(x.num % y.num);
+    }
+    
+    return lval_err(LERR_BAD_OP);
+}
+
+lval eval(mpc_ast_t* t) {
+    
+    // If the string's tag is a number, check for error in conversion
+    // If not, return
+    if (strstr(t->tag, "number")) {
+        errno = 0;
+        long x = strtol(t->contents, NULL, 10);
+        return errno != ERANGE 
+            ? lval_num(x)
+            : lval_err(LERR_BAD_NUM);
+    }
+    
+    // The operator is always going to be the second child 
+    // Notice how we check children at index 1 
     char* op = t->children[1]->contents; 
     
     // Store the third child in x
-    long x = eval(t->children[2]);
+    lval x = eval(t->children[2]);
     
     // Iterate through the remaining children
     int i = 3;
@@ -94,11 +198,10 @@ int main(int argc, char** argv) {
         // Parse user input 
         mpc_result_t r;
         if (mpc_parse("<stdin>", input, Junior, &r)) {
-        
-            long result = eval(r.output);
-            printf("%li\n", result);
+            lval result = eval(r.output);
+            lval_println(result);
             mpc_ast_delete(r.output);
-        
+            
         } else {
             // If parse is not successful, print and delete Error 
             mpc_err_print(r.error);
