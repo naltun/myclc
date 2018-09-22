@@ -329,7 +329,7 @@ int main(int argc, char** argv) {
         char* input = readline(">> ");
         
         // if input is 'exit' or 'quit', then exit with a status of 0
-        if (strcmp(input, "exit") == 0 || strcmp(input, "quit") ==0) { exit(0); }
+        if (strcmp(input, "exit") == 0 || strcmp(input, "quit") == 0) { exit(0); }
 
         // add user input to input history
         add_history(input);
